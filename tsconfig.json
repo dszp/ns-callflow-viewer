@@ -20,5 +20,15 @@
   // Selftests run under tsx, which does not typecheck them. They use Node globals and WebCrypto
   // shapes the Workers types narrow differently, so including them here produces noise that hides
   // real errors in the code that actually ships.
-  "exclude": ["src/**/*.selftest.ts"]
+  "exclude": [
+    // Selftests run under tsx, which does not typecheck them. They use Node globals and WebCrypto
+    // shapes the Workers types narrow differently, so including them here produces noise that hides
+    // real errors in the code that actually ships.
+    "src/**/*.selftest.ts",
+    // cli.ts is a NODE program (fs/path), not Worker code. Typechecking it here would mean pulling
+    // @types/node into the same project as @cloudflare/workers-types, where the two disagree about
+    // globals like `fetch` — which is how a Worker file ends up silently typechecked against Node's
+    // lenient shapes. It runs under tsx and is exercised by `pnpm flow` against the fixture.
+    "src/cli.ts"
+  ]
 }
