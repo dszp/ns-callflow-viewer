@@ -17,7 +17,7 @@
  * surface. The exposure gate then applies to the DATA routes as well as the HTML ones — a 403 on the
  * page and a 200 on the JSON would be the whole vulnerability with a friendly page in front of it.
  *
- * WHAT IS NOT HERE, DELIBERATELY: no delegated `ns_t`, no principal, no policy engine, no feature
+ * WHAT IS NOT HERE, DELIBERATELY: no delegated per-caller tokens, no principal, no policy engine, no feature
  * gates, no injection, no writes. Those belong to the portal backend, which is a different product
  * with a different security model. `boundary.selftest.ts` fails the suite if one of them appears.
  */

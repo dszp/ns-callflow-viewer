@@ -1,0 +1,11 @@
+# Copy to `.dev.vars` (gitignored) for local `wrangler dev`. Literal values only. Never commit the
+# filled-in copy. NS_SERVER and the two ACCESS_* values belong in wrangler.jsonc `vars`, not here —
+# keep each key in exactly one place rather than relying on which one wins.
+
+# The stored credential this Worker reads NetSapiens as. It answers EVERY request that reaches the
+# Worker, so use the narrowest token your platform will issue — read-only if that is on offer.
+NS_API_KEY=""
+
+# Optional: softphone app presence on diagram agent lines. Blank ⇒ no app calls at all, and the
+# diagram is byte-identical to the NetSapiens-only baseline.
+RINGOTEL_API_KEY=""
