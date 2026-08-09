@@ -60,14 +60,14 @@ export interface AppEnrichEnv {
   /** NS device-name suffix, e.g. 'r' → device '100r'. Default 'r'. Used for health classification. */
   RINGOTEL_ACTIVATION_SUFFIX?: string;
   /**
-   * Cache-key namespace for THIS deployment — `"portal"` / `"dev"` / `"dia"`. See `scopeOf`.
+   * Cache-key namespace for THIS deployment, e.g. `"viewer"`. See `scopeOf`.
    *
-   * `caches.default` is **zone-shared**: every Worker on `servantvoice.cloud` reads and writes one
-   * cache, so an unscoped key is one entry shared by all three deployments. That is not a theoretical
-   * concern — it was actively corrupting testing (a harness pointed at dev while evaluating prod, same
-   * org): prod writes and invalidates, dev then repopulates the shared key from ITS read, and prod
-   * serves dev's value for the rest of the TTL. `invalidateOrgUsers` is scoped to one deployment; the
-   * entry it deletes belongs to three.
+   * `caches.default` is **zone-shared**, not per Worker: every Worker on the same Cloudflare zone reads
+   * and writes one cache, so an unscoped key is a single entry shared by every deployment on that zone.
+   * That is not a theoretical concern — it has actively corrupted testing, where one deployment writes
+   * and invalidates, a second repopulates the shared key from ITS read, and the first then serves the
+   * second's value for the rest of the TTL. A scoped invalidation deletes one deployment's entry; an
+   * unscoped one belongs to all of them.
    *
    * MUST be an explicit per-env var, NOT derived from `url.hostname`: `scheduled()` has no request, so
    * a hostname-derived scope would give the cron a different key than the fetch path and the two would
