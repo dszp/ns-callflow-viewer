@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+out/
+# Real domain snapshots (names, emails, DIDs, addresses). NEVER commit customer data.
+fixtures/
+.dev.vars
+.dev.vars.local
+
+# The real deployment config: real hostnames, the Access AUD, real domain lists. The committed
+# wrangler.jsonc carries placeholders; yours lives here and is deployed with `wrangler deploy -c`.
+wrangler.*.jsonc
+!wrangler.example.jsonc
+
+# Private working context. This repo is PUBLIC — these must never reach it.
+CLAUDE.md
+docs/superpowers/

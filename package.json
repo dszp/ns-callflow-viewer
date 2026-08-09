@@ -1,0 +1,32 @@
+{
+  "name": "ns-callflow-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.11.0",
+  "description": "Live call-flow diagrams for NetSapiens — a standalone Cloudflare Worker over @dszp/netsapiens-lib.",
+  "scripts": {
+    "flow": "tsx src/cli.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "pnpm test:access && pnpm test:exposure && pnpm test:setup && pnpm test:enrich && pnpm test:nsdevices && pnpm test:worker && pnpm test:boundary",
+    "test:access": "tsx src/access.selftest.ts",
+    "test:exposure": "tsx src/exposure.selftest.ts",
+    "test:setup": "tsx src/setup.selftest.ts",
+    "test:enrich": "tsx src/appEnrich.selftest.ts",
+    "test:nsdevices": "tsx src/nsDevices.selftest.ts",
+    "test:worker": "tsx src/worker.selftest.ts",
+    "test:boundary": "tsx src/boundary.selftest.ts"
+  },
+  "dependencies": {
+    "@dszp/netsapiens-lib": "^0.1.6",
+    "@dszp/ringotel-lib": "^0.1.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5",
+    "tsx": "^4.22.4",
+    "typescript": "^7.0.2",
+    "wrangler": "^4"
+  }
+}

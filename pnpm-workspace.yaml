@@ -1,0 +1,6 @@
+# pnpm 11 blocks postinstall scripts unless a package is allowed here. `wrangler dev` needs workerd
+# and esbuild built, so without this the only real-runtime check in the whole build fails with an
+# error that reads like a wrangler bug.
+allowBuilds:
+  esbuild: true
+  workerd: true
