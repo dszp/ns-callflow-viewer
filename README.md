@@ -1,7 +1,10 @@
 # ns-callflow-viewer
 
 Live **call-flow diagrams for NetSapiens**, as a tool you open. Runs on Cloudflare Workers; bring your own
-NetSapiens token and Cloudflare account.
+NetSapiens token and Cloudflare account, for internal users only. (Integrate most of this into the 
+NetSapiens Manager Portal with the [ns-portal-kit project](https://github.com/dszp/ns-portal-kit).) 
+Free Cloudflare plan should be sufficient for most organizations, but a paid Workers plan is 
+inexpensive if you exceed the free capacity.
 
 Pick a domain, pick an entity — a DID, an auto attendant, a call queue, a user — and it resolves that
 entity's routing from the API and draws it: DID → time-of-day → auto-attendant menu → queue → agents →
