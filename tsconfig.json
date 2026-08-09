@@ -16,5 +16,9 @@
     "noUncheckedIndexedAccess": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/worker.ts", "src/access.ts", "src/viewerApp.ts", "src/ringotel.ts", "src/nsDevices.ts", "src/status.ts", "src/statusPage.ts"]
+  "include": ["src/**/*.ts"],
+  // Selftests run under tsx, which does not typecheck them. They use Node globals and WebCrypto
+  // shapes the Workers types narrow differently, so including them here produces noise that hides
+  // real errors in the code that actually ships.
+  "exclude": ["src/**/*.selftest.ts"]
 }
