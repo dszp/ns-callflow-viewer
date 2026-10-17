@@ -1,6 +1,6 @@
 {
   "name": "ns-callflow-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.11.0",
@@ -10,8 +10,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "pnpm test:access && pnpm test:exposure && pnpm test:setup && pnpm test:enrich && pnpm test:nsdevices && pnpm test:worker && pnpm test:boundary",
+    "test": "pnpm test:access && pnpm test:viewer && pnpm test:exposure && pnpm test:setup && pnpm test:enrich && pnpm test:nsdevices && pnpm test:worker && pnpm test:boundary",
     "test:access": "tsx src/access.selftest.ts",
+    "test:viewer": "tsx src/viewerApp.selftest.ts",
     "test:exposure": "tsx src/exposure.selftest.ts",
     "test:setup": "tsx src/setup.selftest.ts",
     "test:enrich": "tsx src/appEnrich.selftest.ts",
@@ -20,7 +21,7 @@
     "test:boundary": "tsx src/boundary.selftest.ts"
   },
   "dependencies": {
-    "@dszp/netsapiens-lib": "^0.1.6",
+    "@dszp/netsapiens-lib": "^0.14.0",
     "@dszp/ringotel-lib": "^0.1.7"
   },
   "devDependencies": {

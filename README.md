@@ -30,8 +30,9 @@ on day one without anyone else's cooperation — which is the main reason to run
 - **Diagrams resolved live** from the NetSapiens API, per view — not a stored picture, and not a drawing
   that was accurate the day someone made it.
 - **A viewer built for reading them** — scroll pans, Ctrl/⌘+scroll zooms, a theme picker that follows your
-  system light/dark setting, and a layout toggle between two graph engines for when a dense diagram lays
-  out badly under one of them.
+  system light/dark setting, and a direction toggle (top-down or left-right) for when a dense diagram reads
+  better the other way. Diagrams are drawn by [Pele](https://github.com/obsidianmd/pele), which lays out
+  and measures its own text, so labels don't clip.
 - **Export** — SVG, PNG, or the **Mermaid source**, which drops into any document system that renders
   Mermaid and stays editable. A diagram that cannot leave the tool ends up redrawn by hand for the customer
   document, which is exactly the artifact this replaces.

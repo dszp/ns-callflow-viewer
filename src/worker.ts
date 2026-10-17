@@ -76,7 +76,7 @@ const normDomain = (d: string): string => d.trim().toLowerCase().replace(/\.+$/,
 
 /**
  * Baseline security headers on EVERY response. The CSP is the deliberately NON-BREAKING subset: it does
- * not restrict script-src (the viewer runs inline modules plus an SRI-pinned Mermaid from a CDN, so a
+ * not restrict script-src (the viewer runs inline modules plus an SRI-pinned Pele from a CDN, so a
  * script-src policy would need 'unsafe-inline' or a nonce refactor for little gain) — it locks down the
  * cheap, high-value directives instead. The viewer is never framed, so `frame-ancestors 'none'` plus
  * X-Frame-Options forbids embedding; object-src / base-uri / form-action 'none' kill plugin,

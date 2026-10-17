@@ -74,25 +74,33 @@ dashed `↩ <target>` leaf instead of a line looping back up. The real node stil
 first expanded. This is centralized in one `edge()` method, so it covers every call site. If you add a new
 expandable node kind that can form cycles, give it the same enter/leave treatment.
 
-**Mermaid IDs must never carry data.** The emitter uses synthetic `n<i>` identifiers; NetSapiens values
-(hosts, parameters, anything with `.`/`:`/`@`/`*`/spaces) go only in quoted labels. Data in an ID position
-makes `mermaid.render()` throw on real domains.
+**Diagram IDs must never carry data.** The Mermaid emitter uses synthetic `n<i>` identifiers; NetSapiens
+values (hosts, parameters, anything with `.`/`:`/`@`/`*`/spaces) go only in quoted labels. Data in an ID
+position breaks the parse on real domains. Click-to-navigate depends on those IDs too: Pele marks each
+node `g.pele-node[data-id="n<i>"]`, and the page maps `n<i>` back to the graph's node by index.
 
 ## Rendering traps
 
-**Edge-label clipping is fixed in CSS, not by measurement.** Mermaid sizes each edge-label
-`foreignObject` from a font measurement that drifts under `look: neo`, so the rendered span was wider than
-its box and the right edge clipped ("press 2" → "press "). Padding the label to buy slack could not beat
-the drift. The durable fix is `g.edgeLabel foreignObject { overflow: visible }` — plus, because that then
-reveals Mermaid's oversized semi-transparent label background, `.labelBkg { background: transparent }`,
-`foreignObject > div { white-space: nowrap; line-height: 1.35; max-width: none }`, and an inline-block
-span with its own padding and radius. Keep the span background theme-derived rather than hardcoded, so it
-adapts across themes.
+**The page draws with Pele, not Mermaid.** Pele reads the same Mermaid text but lays it out and measures
+labels itself, writing plain SVG with no `foreignObject` — so the edge-label clipping Mermaid needed CSS
+workarounds for is gone, and the SVG exports without depending on page CSS. Both the script tag and the
+sanitizer come from the library (`peleScriptTag()`, `svgSanitizerScript()`), the same ones its gallery
+uses. Two rules follow:
+
+- **Insert the diagram through `cleanSvg()`, never `innerHTML`.** Mermaid's `securityLevel: 'strict'` was
+  the second escaping layer behind the emitter; Pele has no such mode, so the sanitizer is that layer now.
+- **Exports go through the library's `svgToSvgBlob` / `svgToPngBlob`.** Pele colors everything through
+  CSS variables, some of them written into SVG attributes; the exporters resolve every `var()` to a
+  concrete color so the file renders standalone, in librsvg and editors too. A light theme exports on
+  white; a dark one keeps its diagram background.
+
+Pele ignores Mermaid's `look`, `themeVariables` and `layout` settings, so there is no ELK toggle and the
+hand-drawn theme draws as its plain palette.
 
 **The theme registry is the source of truth**, and it lives in the library. The viewer consumes it as
-injected data and re-themes **client-side**: the Worker emits legacy dark, no-frontmatter Mermaid, and the
-page swaps each `classDef` line for the chosen palette and prepends the frontmatter. So theme and layout
-switches are instant with no round-trip. Branding is layered on at request time from `BRAND_ACCENT` /
+injected data and re-themes **client-side**: the Worker emits legacy dark, no-frontmatter Mermaid, the
+page swaps each `classDef` line for the chosen palette, and the theme's line, text and background colors
+become Pele's `--pele-*` CSS variables. So theme and direction switches are instant with no round-trip. Branding is layered on at request time from `BRAND_ACCENT` /
 `BRAND_NAME`, returning a **new** object — module scope is shared across requests in a Worker, so mutating
 the registry would leak one request's branding into every other.
 

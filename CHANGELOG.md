@@ -11,6 +11,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 { "ok": true, "configured": true, "version": "0.1.0", "scope": "default" }
 ```
 
+## [0.2.0] — 2026-10-17
+
+### Changed
+
+- **Diagrams are drawn by [Pele](https://github.com/obsidianmd/pele) instead of Mermaid.** Pele reads the
+  same Mermaid text but lays it out and measures labels itself, so labels no longer clip. It loads from
+  jsDelivr pinned with Subresource Integrity, through `@dszp/netsapiens-lib` 0.14.0, and its output passes
+  through the library's SVG sanitizer before it reaches the page.
+- **PNG and SVG downloads use the library's exporters.** A light theme exports on white, a dark one on its
+  diagram background, and the SVG opens correctly outside a browser.
+- Themes still switch node colors and the page's light/dark chrome. The hand-drawn theme now draws as its
+  plain palette, since Pele has no hand-drawn style.
+- Requires `@dszp/netsapiens-lib` 0.14.0 (was 0.1.x). The jump also brings the library's fix for domains
+  with more than 100 users or numbers, which were missing entries in diagrams and entity lists.
+
+### Removed
+
+- **The ELK layout toggle.** Pele has its own layout engine. This also removes the one script the viewer
+  loaded without Subresource Integrity: ELK's plugin, an on-demand import from jsDelivr.
+
 ## [0.1.0] — 2026-08-09
 
 Initial release. Extracted from a combined NetSapiens portal toolkit, where this viewer had been one of

@@ -4,17 +4,21 @@
  * Auth is handled around it (CF Access for the human + a service token in the Worker); this page just
  * calls /domains, /entities, /flow.
  *
- * Theming: the Worker returns a LEGACY (dark, no-frontmatter) Mermaid string in `__mermaid`. The
- * client re-themes it in place — swap each `classDef` line for the chosen palette + prepend a
- * `look`/`theme`/`themeVariables` frontmatter — so switching themes is instant and needs no server
- * round-trip. The whole SPA chrome re-skins via CSS variables. Themes mirror the shared
- * netsapiens-lib theme registry (THEMES), injected into the page as data — one source of truth
- * shared with the host gallery. Adding a theme in the lib makes it appear here automatically.
+ * Rendering: the Worker returns a LEGACY (dark, no-frontmatter) Mermaid string in `__mermaid`, and the
+ * page draws it with Pele (Mermaid syntax, Pele's own layout and plain-SVG output) — loaded through
+ * netsapiens-lib's `peleScriptTag()` (pinned + SRI) and passed through its `svgSanitizerScript()`
+ * before insertion, the same two pieces the lib's own gallery uses.
  *
- * Self-contained HTML (inline CSS/JS, Mermaid from CDN). Not the client-visible portal injection —
+ * Theming: the client swaps each `classDef` line for the chosen theme's palette (Pele honors classDef)
+ * and maps the theme's line/text/background colors onto Pele's `--pele-*` CSS variables, so switching
+ * themes needs no server round-trip. Mermaid's `look`/`themeVariables` frontmatter is gone: Pele ignores
+ * it, so a hand-drawn theme renders as its plain palette. The whole SPA chrome re-skins via CSS
+ * variables. Themes come from the shared netsapiens-lib registry (THEMES), injected as data.
+ *
+ * Self-contained HTML (inline CSS/JS, Pele from CDN). Not the client-visible portal injection —
  * that's a separate, neutral secondary script (Phase 4). This is the internal tool.
  */
-import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME, rasterizerScript } from '@dszp/netsapiens-lib';
+import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME, rasterizerScript, peleScriptTag, svgSanitizerScript } from '@dszp/netsapiens-lib';
 import { themesFor, type BrandEnv } from './brand.js';
 
 /**
@@ -43,7 +47,7 @@ export function viewerHtml(env: BrandEnv = {}): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Call-Flow Viewer</title>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js" integrity="sha384-T/0lMUdJpd2S1ZHtRiofG3htU3xPCrFVeAQ1UUE2TJwlEJSV5NUwn30kP28n238E" crossorigin="anonymous"></script>
+${peleScriptTag()}
 <style>
   :root {
     color-scheme: dark;
@@ -87,21 +91,9 @@ export function viewerHtml(env: BrandEnv = {}): string {
   .item.active { background:var(--item-active); border-left-color:var(--accent); }
   .item .pri { font-size:13.5px; color:var(--text); }
   .item .sec { font-size:12px; color:var(--dim); margin-top:1px; }
-  .mermaid g.node.navq { cursor:pointer; }
-  .mermaid g.node.navq:hover { filter:brightness(1.15); }
-  .mermaid g.agents div, .mermaid g.agents span, .mermaid g.agents p,
-  .mermaid g.devices div, .mermaid g.devices span, .mermaid g.devices p { text-align:left !important; }
-  .mermaid .edgeLabel div, .mermaid .edgeLabel span, .mermaid .edgeLabel p { text-align:left !important; }
-  .mermaid .nodeLabel, .mermaid .nodeLabel *, .mermaid .node foreignObject, .mermaid .node foreignObject > div { overflow:visible !important; }
-  /* Edge-label chips — keep them TIGHT. overflow:visible stops the right-edge clip (Mermaid under-measures
-     label width under look:neo, so "press 2" got cut), but that revealed Mermaid's oversized semi-transparent
-     .labelBkg block (short labels even wrapped). So drop the block bg, force single-line (explicit <br/> in
-     multi-option labels still breaks), and render the text as a compact rounded chip with a little space
-     before/after. Node equivalent is the .node rule on the line above; these are the edge-label counterpart. */
-  .mermaid g.edgeLabel foreignObject { overflow:visible !important; }
-  .mermaid .edgeLabel .labelBkg { background:transparent !important; }
-  .mermaid .edgeLabel foreignObject > div { white-space:nowrap !important; line-height:1.35 !important; max-width:none !important; }
-  .mermaid span.edgeLabel { display:inline-block; padding:1px 7px; border-radius:4px; line-height:1.35; white-space:nowrap; }
+  #diagram .pele-node.navq { cursor:pointer; }
+  #diagram .pele-node.navq:hover { filter:brightness(1.15); }
+  #diagram svg { max-width:none !important; }
   main { flex:1; position:relative; overflow:hidden; background:var(--diagram-bg); }
   #stage { position:absolute; inset:0; cursor:grab; }
   #stage.dragging { cursor:grabbing; }
@@ -119,7 +111,6 @@ export function viewerHtml(env: BrandEnv = {}): string {
     <span class="spacer"></span>
     <label>Theme <select id="theme"></select></label>
     <button id="dir" title="Toggle diagram direction (top-down / left-right)">Dir: TD</button>
-    <button id="elk" title="ELK layout engine — tidier columns / fewer edge crossings on big flows (loads a plugin on first use)">ELK: off</button>
     <button id="nav" title="Click a user/queue/AA/DID node to jump to it">🔗 Nav: on</button>
     <button id="zin" title="Zoom in">+</button>
     <button id="zout" title="Zoom out">−</button>
@@ -134,16 +125,19 @@ export function viewerHtml(env: BrandEnv = {}): string {
       <div id="list"></div>
     </aside>
     <main>
-      <div id="stage" title="Scroll to pan · Ctrl/⌘+scroll to zoom · drag to pan"><div id="pane"><div id="diagram" class="mermaid"></div></div></div>
+      <div id="stage" title="Scroll to pan · Ctrl/⌘+scroll to zoom · drag to pan"><div id="pane"><div id="diagram"></div></div></div>
       <div id="hint">Pick a domain, then an entity on the left.</div>
       <div id="err" hidden></div>
       <ul class="notes" id="notes" hidden></ul>
     </main>
   </div>
 <script type="module">
-  // Theme drives via Mermaid frontmatter (per-diagram), so no per-switch mermaid.initialize is needed.
-  // securityLevel stays 'strict' from here (frontmatter cannot override it — that's by design).
-  mermaid.initialize({ startOnLoad:false, securityLevel:'strict', flowchart:{ htmlLabels:true, curve:'basis', nodeSpacing:45, rankSpacing:55, padding:18 } });
+  // Pele options. responsive/autoDirection off: this page pans and zooms the diagram itself, and the
+  // Dir button owns the direction.
+  const RENDER = { responsive:false, autoDirection:false, fontFamily:'system-ui, sans-serif', fontSize:14 };
+
+  // ---- SVG sanitizer (shared @dszp/netsapiens-lib source of truth) → defines cleanSvg() ----
+  ${svgSanitizerScript()}
 
   // ---- SVG→PNG rasterizer (shared @dszp/netsapiens-lib source of truth) → defines svgToPngBlob() ----
   ${rasterizerScript()}
@@ -159,12 +153,6 @@ export function viewerHtml(env: BrandEnv = {}): string {
   let current = { domain:'', mermaid:'', entity:null, graph:null };
   let dir = params.get('dir') === 'LR' ? 'LR' : 'TD';
   let navOn = params.get('nav') !== 'off';
-  // ELK is now OPT-IN (?engine=elk), not on by default. The plugin loads from jsDelivr's /+esm, which
-  // is a regenerated bundle that can't carry SRI and pulls floating d3/elkjs at jsDelivr build time —
-  // so a CDN/dep compromise would run in the authenticated viewer. dagre (bundled with Mermaid, which
-  // IS SRI-pinned) is the safe default; users who want ELK's tidier columns opt in per session.
-  let elkOn = params.get('engine') === 'elk';
-  let elkLoaded = false;
   let curTheme;
   const view = { scale:1, tx:0, ty:0 };
   let dragMoved = false;
@@ -182,30 +170,19 @@ export function viewerHtml(env: BrandEnv = {}): string {
     const t = THEMES[curTheme], c = t.chrome, root = document.documentElement.style;
     for(const k in CHROME_VARS) if(c[k] != null) root.setProperty(CHROME_VARS[k], c[k]);
     root.setProperty('color-scheme', t.mode);
+    // Pele draws lines, label text and edge-label backgrounds from these.
+    root.setProperty('--pele-bg', c.diagramBg); root.setProperty('--pele-fg', t.textColor);
+    root.setProperty('--pele-line', t.lineColor); root.setProperty('--pele-font', 'system-ui, sans-serif');
     $('theme').value = curTheme;
     if(persist){ try { localStorage.setItem('cf-theme', curTheme); } catch(e){} }
     if(current.mermaid) render();
   }
-  // Re-theme the legacy Mermaid string: apply direction, swap each classDef to the theme palette,
-  // and prepend a look/theme/themeVariables frontmatter. Pure string ops on our own emitted output.
+  // Re-theme the legacy Mermaid string: apply direction and swap each classDef to the theme palette.
+  // Pure string ops on our own emitted output. The result is plain Mermaid (Copy Mermaid pastes it).
   function buildSrc(){
     const t = THEMES[curTheme];
     let body = current.mermaid.replace(/^flowchart (TD|LR)/, 'flowchart '+dir);
-    body = body.replace(/^ {2}classDef (\\w+) .*$/gm, (m,k) => t.palette[k] ? '  classDef '+k+' '+t.palette[k] : m);
-    const vars = "{fontFamily: 'system-ui, sans-serif', fontSize: '14px', lineColor: '"+t.lineColor+"', primaryTextColor: '"+t.textColor+"'}";
-    const layout = elkOn ? 'layout: elk, ' : '';
-    return '---\\nconfig: {'+layout+'look: '+t.look+', theme: '+t.mermaidBase+', themeVariables: '+vars+'}\\n---\\n'+body;
-  }
-  // ELK is an alternate Mermaid layout engine (tidier hierarchical columns than the default dagre).
-  // It ships as a separate plugin loaded lazily the first time ELK is turned on; register its loaders
-  // onto the (UMD global) mermaid so mermaid.render can use \`layout: elk\`. Pin an EXACT version (not
-  // @0): a dynamic import can carry no SRI, so a floating range would auto-pull a hijacked future
-  // release straight into this authenticated viewer. 0.2.2 pairs with mermaid 11.16.0 (peer ^11.0.2).
-  async function ensureElk(){
-    if(elkLoaded) return;
-    const m = await import('https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.2/+esm');
-    mermaid.registerLayoutLoaders(m.default ?? m);
-    elkLoaded = true;
+    return body.replace(/^ {2}classDef (\\w+) .*$/gm, (m,k) => t.palette[k] ? '  classDef '+k+' '+t.palette[k] : m);
   }
 
   async function api(path){
@@ -221,7 +198,7 @@ export function viewerHtml(env: BrandEnv = {}): string {
   function clearView(){
     document.querySelectorAll('.item.active').forEach(x=>x.classList.remove('active'));
     current.mermaid=''; current.entity=null; current.graph=null;
-    $('diagram').innerHTML=''; $('notes').hidden=true; clearErr();
+    $('diagram').replaceChildren(); $('notes').hidden=true; clearErr();
     $('hint').hidden=false; resetView();
     $('svg').disabled=true; $('mmd').disabled=true; $('png').disabled=true;
   }
@@ -337,25 +314,24 @@ export function viewerHtml(env: BrandEnv = {}): string {
   }
 
   async function loadFlow(kind, ref){
-    clearErr(); $('hint').hidden=true; $('notes').hidden=true; $('diagram').innerHTML='Rendering…';
+    clearErr(); $('hint').hidden=true; $('notes').hidden=true; $('diagram').textContent='Rendering…';
     try {
       const g = await api('/flow?domain='+encodeURIComponent(current.domain)+'&kind='+kind+'&ref='+encodeURIComponent(ref)+'&format=json');
       current.mermaid = g.__mermaid; current.entity = kind+'-'+ref; current.graph = g;
       await render();
       $('svg').disabled=false; $('mmd').disabled=false; $('png').disabled=false;
       if(g.notes && g.notes.length){ const n=$('notes'); n.innerHTML=g.notes.map(x=>'<li>'+esc(x)+'</li>').join(''); n.hidden=false; }
-    } catch(e){ $('diagram').innerHTML=''; showErr('Rendering flow: '+e.message); }
+    } catch(e){ $('diagram').replaceChildren(); showErr('Rendering flow: '+e.message); }
   }
 
   async function render(){
     if(!current.mermaid) return;
-    if(elkOn){ try { await ensureElk(); } catch(e){ showErr('ELK plugin failed to load; using default layout'); elkOn=false; $('elk').textContent='ELK: off'; } }
-    const { svg } = await mermaid.render('m'+Date.now(), buildSrc());
-    $('diagram').innerHTML = svg; resetView(); wireNav();
+    $('diagram').replaceChildren(cleanSvg(pele.render(buildSrc(), RENDER).svg)); resetView(); wireNav();
   }
 
   // Click-to-navigate (dedicated viewer only; the injected build omits this). Reconstruct which
-  // mermaid node (n<i>, by graph order) is a navigable entity, then wire clicks on the SVG nodes.
+  // diagram node (n<i>, by graph order) is a navigable entity, then wire clicks on the SVG nodes —
+  // Pele marks each one g.pele-node[data-id="n<i>"].
   function navFor(n){
     let m;
     if(n.kind==='user' && (m=n.id.match(/^user_(.+)$/))) return {kind:'user', ref:m[1]};
@@ -369,8 +345,8 @@ export function viewerHtml(env: BrandEnv = {}): string {
     const nodes=current.graph.nodes||[]; const root=current.graph.rootId;
     const nav={}, title={};
     nodes.forEach((n,i)=>{ if(navOn && n.id!==root){ const t=navFor(n); if(t) nav['n'+i]=t; } if(n.title) title['n'+i]=n.title; });
-    svg.querySelectorAll('g.node').forEach(gel=>{
-      const id=gel.id||''; const mm=id.match(/^flowchart-(.+)-\\d+$/); const key=mm?mm[1]:((id.match(/(n\\d+)/)||[])[1]);
+    svg.querySelectorAll('g.pele-node').forEach(gel=>{
+      const key=gel.getAttribute('data-id');
       if(!key) return;
       if(title[key] && !gel.querySelector(':scope>title')){ const el=document.createElementNS('http://www.w3.org/2000/svg','title'); el.textContent=title[key]; gel.insertBefore(el, gel.firstChild); }
       const t=nav[key];
@@ -412,10 +388,6 @@ export function viewerHtml(env: BrandEnv = {}): string {
   $('dir').onclick=()=>{ dir = dir==='TD'?'LR':'TD'; $('dir').textContent='Dir: '+dir;
     const q=new URLSearchParams(location.search); q.set('dir',dir); history.replaceState(null,'',location.pathname+'?'+q.toString());
     render(); };
-  $('elk').textContent='ELK: '+(elkOn?'on':'off');
-  $('elk').onclick=async()=>{ elkOn=!elkOn; $('elk').textContent='ELK: '+(elkOn?'on':'off');
-    const q=new URLSearchParams(location.search); q.set('engine',elkOn?'elk':'dagre'); history.replaceState(null,'',location.pathname+'?'+q.toString());
-    try { await render(); } catch(e){ showErr('ELK render: '+e.message); } };
   $('nav').textContent='🔗 Nav: '+(navOn?'on':'off');
   $('nav').onclick=()=>{ navOn=!navOn; $('nav').textContent='🔗 Nav: '+(navOn?'on':'off');
     const q=new URLSearchParams(location.search); q.set('nav',navOn?'on':'off'); history.replaceState(null,'',location.pathname+'?'+q.toString());
@@ -432,18 +404,21 @@ export function viewerHtml(env: BrandEnv = {}): string {
       else if(e.key==='Enter'){ e.preventDefault(); if(activeIdx>=0&&curMatches[activeIdx]) pickDomain(curMatches[activeIdx].domain); }
       else if(e.key==='Escape'){ e.preventDefault(); closeMenu(); di.value=selectedDomain; di.blur(); }
     }); }
-  $('svg').onclick=()=>{ const s=$('diagram').querySelector('svg'); if(!s)return; const blob=new Blob([new XMLSerializer().serializeToString(s)],{type:'image/svg+xml'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(current.domain+'.'+current.entity+'.svg'); a.click(); };
+  // Exports: a light theme saves on white (matching print and the portal); a dark one keeps its
+  // diagram background, which its light text needs. The edge-label boxes are filled from --pele-bg, so
+  // point it at the export background while the standalone copy is built (synchronously, before any
+  // await in the exporter, so the screen never repaints with it).
+  function exportBg(){ const t=THEMES[curTheme]; return t.mode==='light' ? '#ffffff' : t.chrome.diagramBg; }
+  function withExportBg(svg, f){ svg.style.setProperty('--pele-bg', exportBg()); try { return f(); } finally { svg.style.removeProperty('--pele-bg'); } }
+  function save(blob, ext){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(current.domain+'.'+current.entity+'.'+ext); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); }
+  $('svg').onclick=()=>{ const s=$('diagram').querySelector('svg'); if(!s)return;
+    try { save(withExportBg(s, ()=>svgToSvgBlob(s,{background:exportBg()})), 'svg'); } catch(e){ showErr('SVG export failed: '+e.message); } };
   $('mmd').onclick=async()=>{ try{ await navigator.clipboard.writeText(buildSrc()); $('mmd').textContent='Copied!'; setTimeout(()=>$('mmd').textContent='Copy Mermaid',1200);}catch{} };
   $('png').onclick=async()=>{
     const s=$('diagram').querySelector('svg'); if(!s)return;
-    const cs=getComputedStyle(document.body);
-    const bg=((cs.getPropertyValue('--diagram-bg')||cs.getPropertyValue('--bg')||'#ffffff').trim())||'#ffffff';
     const btn=$('png'), label=btn.textContent; btn.disabled=true; btn.textContent='Rendering…';
-    try{
-      const blob=await svgToPngBlob(s,{scale:2,background:bg});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download=(current.domain+'.'+current.entity+'.png'); a.click(); URL.revokeObjectURL(a.href);
-    }catch(e){ showErr('PNG export failed: '+e.message); }
+    try{ save(await withExportBg(s, ()=>svgToPngBlob(s,{scale:2,background:exportBg()})), 'png'); }
+    catch(e){ showErr('PNG export failed: '+e.message); }
     finally{ btn.textContent=label; btn.disabled=false; }
   };
 
