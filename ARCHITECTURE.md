@@ -94,8 +94,8 @@ uses. Two rules follow:
   concrete color so the file renders standalone, in librsvg and editors too. A light theme exports on
   white; a dark one keeps its diagram background.
 
-Pele ignores Mermaid's `look`, `themeVariables` and `layout` settings, so there is no ELK toggle and the
-hand-drawn theme draws as its plain palette.
+Pele ignores Mermaid's `look`, `themeVariables` and `layout` settings, so there is no ELK toggle, and the
+page filters out any registry theme whose `look` is `handDrawn` rather than offer a style it can't draw.
 
 **The theme registry is the source of truth**, and it lives in the library. The viewer consumes it as
 injected data and re-themes **client-side**: the Worker emits legacy dark, no-frontmatter Mermaid, the

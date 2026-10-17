@@ -1,6 +1,6 @@
 {
   "name": "ns-callflow-viewer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.11.0",
@@ -21,13 +21,13 @@
     "test:boundary": "tsx src/boundary.selftest.ts"
   },
   "dependencies": {
-    "@dszp/netsapiens-lib": "^0.14.0",
+    "@dszp/netsapiens-lib": "^0.15.1",
     "@dszp/ringotel-lib": "^0.1.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5",
+    "@cloudflare/workers-types": "^5.20261015.1",
     "tsx": "^4.22.4",
     "typescript": "^7.0.2",
-    "wrangler": "^4"
+    "wrangler": "^4.151.0"
   }
 }

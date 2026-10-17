@@ -5,7 +5,7 @@
  * Drawing, export and pan/zoom are browser-only (verified in a browser).
  * Run: `pnpm test:viewer`.
  */
-import { peleScriptTag, svgSanitizerScript } from '@dszp/netsapiens-lib';
+import { peleScriptTag, svgSanitizerScript, letterPrintScript } from '@dszp/netsapiens-lib';
 import { viewerHtml } from './viewerApp.js';
 
 let pass = 0, fail = 0;
@@ -20,6 +20,12 @@ ok('injects the lib\'s SVG sanitizer', html.includes(svgSanitizerScript()));
 ok('the diagram is inserted through cleanSvg(), not innerHTML', /replaceChildren\(cleanSvg\(pele\.render\(/.test(html) && !/\$\('diagram'\)\.innerHTML\s*=/.test(html));
 ok('Pele\'s colors follow the theme', html.includes("'--pele-bg'") && html.includes("'--pele-line'"));
 ok('click-to-navigate targets Pele\'s nodes', html.includes("querySelectorAll('g.pele-node')") && html.includes("getAttribute('data-id')"));
+
+ok('injects the lib\'s Letter print layout and wires the PDF button to it', html.includes(letterPrintScript()) && html.includes('cfLetterPrint(') && html.includes("$('pdf').onclick=()=>window.print()"));
+
+const themes = JSON.parse(/const THEMES = (\{.*?\});\n/s.exec(html)?.[1].replace(/\\u003c/g, '<') ?? '{}') as Record<string, { look: string }>;
+ok('offers themes', Object.keys(themes).length >= 2);
+ok('offers no hand-drawn theme (Pele cannot draw that style)', Object.values(themes).every((t) => t.look !== 'handDrawn'));
 
 const inline = [...html.matchAll(/<script(?: type="module")?>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 ok('has an inline script to check', inline.length >= 1);

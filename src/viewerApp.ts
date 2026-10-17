@@ -18,7 +18,7 @@
  * Self-contained HTML (inline CSS/JS, Pele from CDN). Not the client-visible portal injection —
  * that's a separate, neutral secondary script (Phase 4). This is the internal tool.
  */
-import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME, rasterizerScript, peleScriptTag, svgSanitizerScript } from '@dszp/netsapiens-lib';
+import { DEFAULT_LIGHT_THEME, DEFAULT_DARK_THEME, rasterizerScript, peleScriptTag, svgSanitizerScript, letterPrintScript } from '@dszp/netsapiens-lib';
 import { themesFor, type BrandEnv } from './brand.js';
 
 /**
@@ -43,7 +43,10 @@ function jsonForScript(value: unknown): string {
  * branded theme (see brand.ts) — the shared library ships neutral themes only.
  */
 export function viewerHtml(env: BrandEnv = {}): string {
-  const THEMES = themesFor(env);
+  // Pele has no hand-drawn style, so a theme that only differs by Mermaid's `look: handDrawn` would draw
+  // as its plain palette under a name that promises otherwise. Offer only themes this page can draw; a
+  // saved or deep-linked choice of one falls back to the default (defaultTheme() ignores unknown ids).
+  const THEMES = Object.fromEntries(Object.entries(themesFor(env)).filter(([, t]) => t.look !== 'handDrawn'));
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Call-Flow Viewer</title>
@@ -117,6 +120,7 @@ ${peleScriptTag()}
     <button id="zfit" title="Reset view">Fit</button>
     <button id="svg" disabled>Download SVG</button>
     <button id="png" disabled>Download PNG</button>
+    <button id="pdf" disabled title="Print or save as PDF (Letter)">Download PDF</button>
     <button id="mmd" disabled>Copy Mermaid</button>
   </header>
   <div class="wrap">
@@ -138,6 +142,9 @@ ${peleScriptTag()}
 
   // ---- SVG sanitizer (shared @dszp/netsapiens-lib source of truth) → defines cleanSvg() ----
   ${svgSanitizerScript()}
+
+  // ---- US Letter print layout (shared @dszp/netsapiens-lib source of truth) → defines cfLetterPrint() ----
+  ${letterPrintScript()}
 
   // ---- SVG→PNG rasterizer (shared @dszp/netsapiens-lib source of truth) → defines svgToPngBlob() ----
   ${rasterizerScript()}
@@ -200,7 +207,7 @@ ${peleScriptTag()}
     current.mermaid=''; current.entity=null; current.graph=null;
     $('diagram').replaceChildren(); $('notes').hidden=true; clearErr();
     $('hint').hidden=false; resetView();
-    $('svg').disabled=true; $('mmd').disabled=true; $('png').disabled=true;
+    $('svg').disabled=true; $('mmd').disabled=true; $('png').disabled=true; $('pdf').disabled=true;
   }
 
   // ---- domain combobox: type-to-filter over domain OR description (mirrors the sidebar filter) ----
@@ -319,7 +326,7 @@ ${peleScriptTag()}
       const g = await api('/flow?domain='+encodeURIComponent(current.domain)+'&kind='+kind+'&ref='+encodeURIComponent(ref)+'&format=json');
       current.mermaid = g.__mermaid; current.entity = kind+'-'+ref; current.graph = g;
       await render();
-      $('svg').disabled=false; $('mmd').disabled=false; $('png').disabled=false;
+      $('svg').disabled=false; $('mmd').disabled=false; $('png').disabled=false; $('pdf').disabled=false;
       if(g.notes && g.notes.length){ const n=$('notes'); n.innerHTML=g.notes.map(x=>'<li>'+esc(x)+'</li>').join(''); n.hidden=false; }
     } catch(e){ $('diagram').replaceChildren(); showErr('Rendering flow: '+e.message); }
   }
@@ -421,6 +428,15 @@ ${peleScriptTag()}
     catch(e){ showErr('PNG export failed: '+e.message); }
     finally{ btn.textContent=label; btn.disabled=false; }
   };
+
+  // Print / PDF: the library lays the current diagram out on US Letter whenever the page prints (this
+  // button or the browser's own Print command); with no diagram open it prints the page as it is.
+  const KIND_LABEL = { did:'DID', user:'User', queue:'Queue', attendant:'Auto Attendant' };
+  cfLetterPrint(() => $('diagram').querySelector('svg'), () => {
+    const e = current.graph && current.graph.entity;
+    return (e ? (KIND_LABEL[e.kind] || e.kind)+': '+e.label+' · ' : '')+current.domain;
+  });
+  $('pdf').onclick=()=>window.print();
 
   loadDomains();
 </script>

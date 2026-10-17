@@ -11,6 +11,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 { "ok": true, "configured": true, "version": "0.1.0", "scope": "default" }
 ```
 
+## [0.2.1] — 2026-10-17
+
+### Added
+
+- **Download PDF.** Opens the print dialog with the diagram laid out on US Letter, the same layout the
+  portal kit's call-flow window uses: one page when it stays legible, otherwise split between boxes across
+  as few pages as possible, in portrait or landscape. The browser's own Print command gets the same layout.
+
+### Removed
+
+- **The hand-drawn theme from the theme picker.** Pele has no hand-drawn style, so it drew as a plain
+  palette under a name that promised otherwise. A saved or linked choice of it falls back to the default
+  theme.
+
+### Changed
+
+- Requires `@dszp/netsapiens-lib` 0.15.1, which provides the print layout.
+- Wrangler 4.120.0 → 4.151.0 and `@cloudflare/workers-types` 5.20260804.1 → 5.20261015.1 (development
+  tooling only; the newer wrangler requires the newer types).
+
 ## [0.2.0] — 2026-10-17
 
 ### Changed
