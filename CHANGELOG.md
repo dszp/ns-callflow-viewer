@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 **Which version am I running?** `GET /health` on your deployment reports it, matching a heading below:
 
 ```json
-{ "ok": true, "configured": true, "version": "0.2.1", "scope": "default" }
+{ "ok": true, "configured": true, "version": "X.Y.Z", "scope": "default" }
 ```
 
 ## [0.2.1] — 2026-10-17
